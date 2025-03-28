@@ -4,7 +4,7 @@ Basic usage
             dim=dims//head,
             theta=10000,
             use_quaternion=True,
-            use_projection=True, <- if you need more than 3 dimensions
+            use_projection=True, <- if you need more than 3 dimensions (else givens for 2Dn) 
             rot_scale=4.0,
             rot_count=1
         )
