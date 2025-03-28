@@ -1,16 +1,28 @@
 Basic usage 
 
-      self.rotary = RotaryEmbedding(
-          dim=self.head_dim,
-          use_quaternion=True,
-          use_projection=False,
-          rot_scale=1.0,
-          rot_count=2
-      )
+        self.rotary1 = RotaryEmbedding(
+            dim=dims//head,
+            theta=10000,
+            use_quaternion=True,
+            use_projection=True, <- if you need more than 3 dimensions
+            rot_scale=4.0,
+            rot_count=1
+        )
 
-    # Then in your attention block right before matrix calculation:
-    q = self.rotary.rotate_queries_or_keys(q)
-    k = self.rotary.rotate_queries_or_keys(k)
+        self.rotary2 = RotaryEmbedding(
+            dim=dims//head,
+            theta=-6000, <-change direction
+            use_quaternion=False, <- falls back to regular RoPE
+            use_projection=False,
+            rot_scale=1.0,
+            rot_count=4
+        )
+
+      q = self.rotary1.rotate_queries_or_keys(q)
+      k = self.rotary2.rotate_queries_or_keys(k)
+      ... as many as you need
+        see code for more options
+
 
  use_projection = True
  
