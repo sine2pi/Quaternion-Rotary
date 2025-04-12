@@ -1,7 +1,8 @@
 
 
     # RotaryEmbedding Usage Guide
-
+    # v.01
+    
     Rotary Positional Embedding applies rotation to token embeddings based on their position, 
     helping models understand sequence order. This implementation offers standard RoPE plus 
     quaternion-based rotations and content-dependent variants.
