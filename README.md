@@ -7,20 +7,27 @@
     helping models understand sequence order. This implementation offers standard RoPE plus 
     quaternion-based rotations and content-dependent variants.
 
+    Update: Now has more stuff.
+
     
-```python
+
 
 ## Initialization Parameters
 
+<img width="683" alt="rot" src="https://github.com/user-attachments/assets/64726baf-8782-4174-a3fd-4cfda78280e5" />
+
+Changed to pi rotations. Frequency is now in radians.
+
+```python
     rotary = RotaryEmbedding(
         dim=768,                 # Embedding dimension
-        theta=10000,             # Base wavelength
-        num_freqs=1,             # Number of frequency components
+        theta=1,                 # Number of frequency components
+        num_freqs=10000,         # Base wavelength
         learned_freq=True,       # Whether frequencies are learnable
         theta_rescale_factor=1., # Rescale factor for frequencies
-        use_quaternion=False,    # Use quaternion rotations
-        rot_scale=1.0,           # Scale for rotation magnitude
-        rot_count=1,             # Number of rotation operations
+        use_quaternion=False,    # Use quaternion rotation
+        ~ rot_scale=1.0,           # Scale for rotation magnitude~ ~
+        ~ rot_count=1,             # Number of rotation operations ~   Now rotates 360 degrees based on a learnable parameter
         use_projection=False,    # Use projections for high dimensions
         proj_dim=3,              # Projection dimension (usually 3)
         proj_scale=0.1,          # Scale factor for projections
