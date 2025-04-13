@@ -1,4 +1,5 @@
 
+
 class RotaryEmbedding(nn.Module):
     def __init__( self, dim, theta=1, freqs = 10000, learned_freq = True, theta_rescale_factor = 1.0, 
                  use_quaternion = False, rot_scale = 1.0, rot_count = 1.0, use_projection = False, proj_dim = 3, 
@@ -10,7 +11,6 @@ class RotaryEmbedding(nn.Module):
         theta_scaled = theta * theta_rescale_factor ** (dim / (dim - 2))
         direction = -1.0 if reverse_direction else 1.0
 
-
         self.theta_param = nn.Parameter(torch.tensor([float(theta_scaled)]), requires_grad=learned_theta)
         inv_freq = 1.0 / (self.theta_param ** (torch.arange(0, dim//2).float() / (dim//2)))
         self.freqs = nn.Parameter(direction * inv_freq * (2 * math.pi), requires_grad=learned_freq)
@@ -18,7 +18,6 @@ class RotaryEmbedding(nn.Module):
         self.rscale = nn.Parameter(torch.tensor([float(rot_scale)]), requires_grad=learned_rot_scale)
         self.rot = nn.Parameter(torch.tensor([float(rot_count)]), requires_grad=learned_rot_count)
         
-        # Base settings
         self.register_buffer('dummy', torch.tensor(0), persistent=False)
         self.use_quaternion = use_quaternion
         self.use_projection = use_projection
@@ -27,7 +26,6 @@ class RotaryEmbedding(nn.Module):
         self.scale_base = float(scale_base)
         self.step = 0
 
-        # Quaternion-specific parameters
         if use_quaternion:
             init_val = -2.0 if reverse_direction else 2.0
             self.dparam = nn.Parameter(torch.tensor([init_val]))
@@ -47,7 +45,7 @@ class RotaryEmbedding(nn.Module):
         u_norm = torch.norm(u, p=2)
         u = u / (u_norm + eps)
         w = torch.cos(theta / 2)
-        vec = torch.sin(theta / 2) * u  # noqa: F841
+        vec = torch.sin(theta / 2) * u
         x_shape = x.shape
         x = x.reshape(-1, 3)
         uv_cross = torch.cross(u.unsqueeze(0), x)
@@ -71,8 +69,6 @@ class RotaryEmbedding(nn.Module):
         return G
     
     def rotations(self, x):
-        direction = torch.sigmoid(self.dparam) * 2 - 1
-        # Get rot_count as an integer, using clamp for stability
         rot_count_value = torch.clamp(self.rot, min=0.1, max=10.0)
         rotate = int(round(self.rscale.item() * rot_count_value.item()))
         head_dim = x.shape[-1]
@@ -80,14 +76,14 @@ class RotaryEmbedding(nn.Module):
             i, j = self.pairs[k].long()
             if i >= head_dim or j >= head_dim:
                 continue
-            theta = direction * self.thetas[k] * self.tscale
+            theta = self.thetas[k] * self.tscale
             G = self.rotation_matrix(dims=head_dim, i=i.item(), j=j.item(), theta=theta)
             x_shape = x.shape
             x = x.reshape(-1, head_dim)
             x = x @ G
             x = x.reshape(*x_shape)
         return x
-    
+
     def _ensure_projection(self, x):
         if self.proj_down is None or self.proj_down.weight.device != x.device:
             head_dim = x.shape[-1] 
@@ -172,7 +168,6 @@ class RotaryEmbedding(nn.Module):
         """
         t_clone = t.clone()
         if self.use_quaternion:
-            # Quaternion code stays the same
             if self.use_projection and t_clone.shape[-1] > 3:
                 return self.project_and_rotate(t_clone)
             else:
@@ -182,7 +177,6 @@ class RotaryEmbedding(nn.Module):
                     return result + perturbation
                 return result
         else:
-            # Auto-detect sequence dimension
             if len(t_clone.shape) == 4:
                 ctx = t_clone.shape[2]
                 seq_dim_val = 2
@@ -190,37 +184,28 @@ class RotaryEmbedding(nn.Module):
                 ctx = t_clone.shape[1]
                 seq_dim_val = 1
             
-            # Ensure everything on same device
             device, dtype = t_clone.device, t_clone.dtype
             seq = torch.arange(ctx, device=device, dtype=dtype) + offset
-            seq = seq + 0.01  # Small offset for numerical stability
+            seq = seq + 0.01
             freqs = self.forward(seq)
             scale_value = scale if scale is not None else self.scale_base
             
             if continuous:
-                # Continuous rotation - keep parameters in computational graph
                 scaled_freqs = freqs * self.rot
-                # Use direct tensor multiplication instead of scalar
                 scale_tensor = scale_value * self.rscale
                 result = self.apply_rotary(scaled_freqs, t_clone, 
                                         scale=scale_tensor, 
                                         seq_dim=seq_dim_val)
             else:
-                # Fix discrete rotation to keep parameters in computational graph too
                 result = t_clone
-                # Get rotation count using differentiable operations
-                # Apply clamp to rot parameter directly
                 rot_count_clamped = torch.clamp(self.rot, min=1.0, max=5.0)
-                # Apply floor to get integer-like behavior while keeping gradients
                 repetitions = torch.floor(rot_count_clamped) 
-                # Apply rotations based on differentiable parameter
-                for _ in range(int(repetitions.item())):  # We still need item() here for the range
+                for _ in range(int(repetitions.item())):
                     scale_tensor = scale_value * self.rscale
                     result = self.apply_rotary(freqs, result, 
                                             scale=scale_tensor, 
                                             seq_dim=seq_dim_val)
             
-            # Add small perturbation if unchanged (for numerical stability)
             if torch.allclose(result, t):
                 perturbation = torch.randn_like(result) * 1e-4
                 return result + perturbation
@@ -232,18 +217,14 @@ class RotaryEmbedding(nn.Module):
         Return the current rotation angle in terms of π
         """
         if self.use_quaternion:
-            # For quaternion mode, get average rotation across pairs
             rot_dir = torch.sigmoid(self.dparam).item() * 2 - 1
             rot_strength = self.rscale.item() * torch.clamp(self.rot, min=0.1, max=10.0).item()
             avg_theta = torch.mean(self.thetas).item() * self.tscale * rot_dir
-            # Convert to π units (e.g., 1.5π)
             pi_units = avg_theta / math.pi
             return f"{pi_units:.3f}π × {rot_strength:.2f}"
         else:
-            # For standard RoPE
             rot_val = self.rot.item()
             rot_scale = self.rscale.item()
-            # Express in terms of π (frequency multiplier)
             return f"{rot_val:.3f}π × {rot_scale:.2f}"
 
     def learned_rotations(self, rotations, t, start_index = 0, freq_ranges = None):
@@ -254,7 +235,6 @@ class RotaryEmbedding(nn.Module):
         return self.apply_rotary(rotations, t, start_index = start_index)
     
     def forward(self, t):
-        # If theta is learnable, we need to recompute frequencies
         freqs = self.freqs
         freqs = torch.einsum('..., f -> ... f', t.type(freqs.dtype), freqs)
         freqs = torch.repeat_interleave(freqs, 2, dim=-1)
