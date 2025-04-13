@@ -18,19 +18,17 @@
 
 <img width="683" alt="rot" src="https://github.com/user-attachments/assets/64726baf-8782-4174-a3fd-4cfda78280e5" />
 
-Changed to pi rotations. Frequency is now in radians.
-
-With freqs=10000 (which becomes theta_scaled), your self.freqs would contain approximately these values:
-
-Starting around 6.28 (2π) for the first element
-Following a geometric decay pattern
-Middle values around 1.0-0.1
-Ending near 0.0006 for the last element
-This creates a frequency spectrum where:
-
-Lower indices (early in the sequence) get high-frequency signals (~6.28)
-Higher indices (deeper in the embedding) get very low-frequency signals (~0.0006)
-This pattern helps the network distinguish between positions at different scales - nearby tokens create strong oscillations in early dimensions, while distant tokens are captured by the slow-changing later dimensions.
+    With freqs=10000 (which becomes theta_scaled), your self.freqs would contain approximately these values:
+    
+    Starting around 6.28 (2π) for the first element
+    Following a geometric decay pattern
+    Middle values around 1.0-0.1
+    Ending near 0.0006 for the last element
+    This creates a frequency spectrum where:
+    
+    Lower indices (early in the sequence) get high-frequency signals (~6.28)
+    Higher indices (deeper in the embedding) get very low-frequency signals (~0.0006)
+    This pattern helps the network distinguish between positions at different scales - nearby tokens create strong oscillations in early dimensions, while distant tokens are captured by the slow-changing later dimensions.
 
 ```python
     rotary = RotaryEmbedding(
